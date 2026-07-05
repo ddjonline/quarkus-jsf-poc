@@ -29,15 +29,16 @@ public class TrackingBean {
     String getCounterText()         // "n/10"
     boolean isAddDisabled()         // count >= max
     boolean isRemoveVisible()       // count > 1
-    boolean isSearchActive()        // any non-blank entry
-    String getFindButtonLabel()     // "Find My Shipment" | "Find My Shipments (n)"
+    boolean isSearchActive()        // any checked + non-blank entry
+    String getFindButtonLabel()     // "Find My Shipment" | "Find My Shipments (n)" — counts checked+non-blank
     boolean isHasResults()
     int getResultsCount()
 
     // ----- actions (each ends with store.save) -----
-    void addNumber()                // append ProNumberEntry(); guard max
-    void removeNumber(String rowId) // remove by id; guard min 1
-    String findShipments()          // initialize per-PRO result panels
+    void addNumber()                // append ProNumberEntry(); guard max; preserves existing entries
+    void removeNumber(String rowId) // remove by id + associated result (matched by normalized PRO); guard min 1
+    void validateEntry(String rowId)// auto-checks checkbox when value is valid (blur Ajax)
+    String findShipments()          // only fetches checked + non-blank rows
     void lookupShipment(String pro) // one async Ajax lookup; updates one panel
     void toggleExpand(String pro)   // flip ShipmentLookupResult.expanded
     void expandFirst()              // "Expand first" link
@@ -47,7 +48,7 @@ public class TrackingBean {
 
 ### `findShipments()` / async lookup logic
 ```
-1. collect non-blank entries -> normalized PRO strings (dedupe)
+1. collect checked + non-blank entries -> normalized PRO strings (dedupe)
 2. results = pros.map { pro -> ShipmentLookupResult(pro, displayPro(pro), PENDING) }
 3. store.save(session.id, search)
 4. return null (stay on same view; pending result panels render below the form)
@@ -56,6 +57,15 @@ public class TrackingBean {
    can transition LOADING -> LOADED/NOT_FOUND/ERROR without waiting for siblings
 6. if exactly one result is LOADED -> mark it expanded (design flow convenience)
 ```
+
+### `validateEntry()` — auto-check on valid input
+
+On input blur, the `validateEntry(rowId)` AJAX listener sets the row's checkbox
+based on validity:
+- If the input value is a valid PRO (1–11 digits after stripping prefix),
+  `checked` is set to `true`.
+- Otherwise (blank or invalid), `checked` is set to `false`.
+- "Add Number" preserves previously entered values — existing rows are untouched.
 
 ## 2. `tracker.xhtml` structure (single responsive view)
 
@@ -78,20 +88,44 @@ fine for `findShipments` in the POC. Each pending result row also has a stable
 per-row Ajax trigger (for example a hidden command component clicked by a small
 startup script) so lookups are separate browser requests and can run in parallel.
 
+> **Critical AJAX `execute` rule:** Add, remove, and blur links must use
+> `execute="@form"`, **not** `execute="@this"`. With `@this`, only the
+> commandLink is decoded and the input components' submitted values are ignored.
+> On re-render the form shows the stale model values (empty strings), visually
+> erasing what the user typed. For blur events specifically (`<f:ajax>` on
+> `<h:inputText>`), using `@this` means only the blurred input is decoded —
+> values the user typed into other inputs are lost on re-render. Using `@form`
+> processes all input values through the JSF lifecycle before the action runs,
+> so previously entered numbers and checkbox states are preserved.
+>
+> **Checkbox `<f:ajax>` must use `execute="@form"` (not `@this`)** — when a
+> checkbox toggles with `@this`, only the clicked checkbox is decoded; other
+> checkboxes' DOM state is never sent to the server. On form re-render, JSF
+> uses the server-side model values, which may differ from what the user sees
+> in the browser, causing other checkboxes to revert. Using `@form` encodes
+> all checkboxes and inputs from the current DOM state, preserving all rows'
+> checkbox states.
+
 ## 3. Fragment ↔ wireframe mapping
 
 ### `pro-input.xhtml` → design1 A/B, design3 A/B (Search & Input)
 - **Toolbar:** `PRO NUMBERS <span>#{tracking.counterText}</span>` on the left;
   `+ Add Number` command link on the right (`disabled=#{tracking.addDisabled}`,
   action `#{tracking.addNumber}`, `<f:ajax render="trackForm">`).
+  "Add Number" does **not** clear previously entered values.
 - **Rows:** `<ui:repeat value="#{tracking.entries}" var="e">`
-  - leading checkbox (visual, per design — non-functional select marker)
+  - `<h:selectBooleanCheckbox value="#{e.checked}">` — functional per-row checkbox
+    with `<f:ajax event="change">` to persist state. Only checked + non-blank
+    rows are sent when "Find My Shipment" is clicked.
   - `<h:inputText value="#{e.value}" pt:placeholder="PRO-4821763 or 4821763">`
+    with `<f:ajax event="blur" listener="#{tracking.validateEntry(e.id)}">` —
+    on blur, auto-checks the checkbox if the value is a valid PRO number.
   - `x` remove commandLink rendered when `#{tracking.removeVisible}`,
     action `#{tracking.removeNumber(e.id)}`.
 - **Find button:** `<h:commandButton value="#{tracking.findButtonLabel}"
   action="#{tracking.findShipments}"
   styleClass="btn-find #{tracking.searchActive ? 'btn-find--active' : 'btn-find--muted'}">`
+  - `searchActive` is true only when ≥1 row is both checked AND non-blank.
   - Prefix search icon (`Q`/magnifier) via CSS/inline SVG.
 - Matches design1-A (1 empty row, muted button) and design1-B (2 rows, active
   dark button labelled `Find My Shipments (2)`).

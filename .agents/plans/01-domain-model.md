@@ -55,20 +55,25 @@ enum class TrackingEventState { COMPLETED, CURRENT, PENDING }
 ## 3. Core domain types
 
 ### `ProNumberEntry`
-One editable input row on the search screen (design1/3). Mutable `value`
-because it is bound to a JSF input; `id` gives JSF a stable row key for
-add/remove.
+One editable input row on the search screen (design1/3). Mutable `value` and
+`checked` because they are bound to JSF components; `id` gives JSF a stable row
+key for add/remove. `checked` defaults to `false` — the checkbox is auto-checked
+(via `validateEntry` AJAX blur) when the user enters a valid PRO number.
 
 **Input rules (new requirement):**
 - **Numeric only** — non-digit characters are rejected/stripped.
 - **1 to 11 digits** — max length 11.
 - **Zero left-padded to 11 digits** to form the canonical PRO used for lookup
   (e.g. `4821763` → `00004821763`).
+- **Row checkbox (`pro-row-check`)** — each row has a checkbox. Only checked +
+  non-blank rows are submitted by `findShipments()`. The checkbox is
+  auto-checked via `validateEntry()` on input blur when the value is valid.
 
 ```
 data class ProNumberEntry(
     val id: String = UUID.randomUUID().toString(),
-    var value: String = ""
+    var value: String = "",
+    var checked: Boolean = false
 ) : Serializable {
     fun isBlank(): Boolean = value.trim().isEmpty()
 
@@ -182,16 +187,47 @@ to Redis (see plan 04). Holds both the editable input rows and the last results.
 ```
 data class TrackingSearch(
     val entries: MutableList<ProNumberEntry> =
-        mutableListOf(ProNumberEntry()),          // starts with one empty row
+        mutableListOf(),
     var results: MutableList<ShipmentLookupResult> = mutableListOf()
 ) : Serializable {
     val count: Int get() = entries.size
     val hasResults: Boolean get() = results.isNotEmpty()
     val foundCount: Int get() = results.count { it.found }
+
+    companion object {
+        fun fresh() = TrackingSearch(
+            entries = mutableListOf(ProNumberEntry())
+        )
+    }
 }
 ```
 
-## 4. Constants
+> **Default value pitfall:** The `entries` constructor parameter must NOT carry a
+> default value of `mutableListOf(ProNumberEntry())`. `jackson-module-kotlin`
+> uses the Kotlin default instead of the JSON-deserialized value, which causes
+> the Redis round-trip to silently discard previously entered entries. Use the
+> `fresh()` factory instead.
+
+## 4. Jackson serialization requirements
+
+All domain classes stored in Redis (`TrackingSearch`, `ProNumberEntry`,
+`ShipmentLookupResult`, `Shipment`, `TrackingEvent`) require
+`@field:JsonProperty` on **every** field. Without these annotations, Jackson
+produces wrong JSON during serialization — fields silently become null or default
+values on deserialization. Example:
+
+```kotlin
+data class ProNumberEntry(
+    @field:JsonProperty("id")      val id: String = UUID.randomUUID().toString(),
+    @field:JsonProperty("value")   var value: String = "",
+    @field:JsonProperty("checked") var checked: Boolean = false
+) : Serializable { ... }
+```
+
+> `@field:` targets the Kotlin field rather than the constructor parameter,
+> which is required for proper Jackson marshalling of Kotlin data classes.
+
+## 5. Constants
 
 ```
 object TrackingConstants {
@@ -201,18 +237,18 @@ object TrackingConstants {
 }
 ```
 
-## 5. Derived / view-helper values (computed in beans, not stored)
+## 6. Derived / view-helper values (computed in beans, not stored)
 
 | Value | Rule | Source |
 |-------|------|--------|
 | Counter text `n/10` | `entries.size + "/" + MAX_PRO_NUMBERS` | design1/3 header |
-| Button label | `foundInputs <= 1 ? "Find My Shipment" : "Find My Shipments (" + n + ")"` | design1/3 button |
-| Button active/muted | active when ≥1 non-blank entry | design1 A (muted) vs B (dark) |
+| Button label | `checkedNonBlankCount <= 1 ? "Find My Shipment" : "Find My Shipments (" + n + ")"` | design1/3 button |
+| Button active/muted | active when ≥1 checked + non-blank entry | design1 A (muted) vs B (dark) |
 | Add disabled | when `entries.size >= MAX_PRO_NUMBERS` | `+ Add Number` |
 | Remove visible | when `entries.size > MIN_PRO_NUMBERS` | per-row `x` |
 | Results count `RESULTS n` | `results.size` | design2/4 |
 
-## 6. Class relationship diagram
+## 7. Class relationship diagram
 
 ```
 TrackingSearch (session-scoped, in Redis)
@@ -224,7 +260,7 @@ TrackingSearch (session-scoped, in Redis)
                                                      (badge style)
 ```
 
-## 7. Seed data (mirrors the wireframes exactly)
+## 8. Seed data (mirrors the wireframes exactly)
 
 Two shipments, defined in the mock repository (plan 06):
 
@@ -245,7 +281,7 @@ Two shipments, defined in the mock repository (plan 06):
 - (Remaining detail fields fabricated consistently for the POC; timeline ends
   with a DELIVERED/COMPLETED final event.)
 
-## 8. Package layout (target)
+## 9. Package layout (target)
 
 ```
 app.freighttrack

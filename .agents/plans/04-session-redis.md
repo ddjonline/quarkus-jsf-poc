@@ -53,18 +53,30 @@ ValueCommands<String, TrackingSearch> value =
 ```
 
 ### Interface sketch (Kotlin)
+
+> **Field injection required:** `RedisSessionStore` MUST use field injection
+> (`@Inject lateinit var redis: RedisDataSource`) because Kotlin's `noArg`
+> plugin leaves constructor-injected fields null. The `ValueCommands` field
+> must use `by lazy` to defer initialization until after `redis` is injected.
+
 ```kotlin
 @ApplicationScoped
-class RedisSessionStore(private val redis: RedisDataSource) {
-    private val cmd = redis.value(String::class.java, TrackingSearch::class.java)
+open class RedisSessionStore {
+    @Inject
+    lateinit var redis: RedisDataSource
+
+    private val cmd: ValueCommands<String, TrackingSearch> by lazy {
+        redis.value(String::class.java, TrackingSearch::class.java)
+    }
+
     private fun key(id: String) = "ft:session:$id"
     private val ttl = Duration.ofMinutes(30)
 
     fun load(id: String): TrackingSearch =
-        cmd.get(key(id)) ?: TrackingSearch()          // fresh working set
+        cmd.get(key(id)) ?: TrackingSearch.fresh()       // fresh working set
 
     fun save(id: String, search: TrackingSearch) {
-        cmd.setex(key(id), ttl.seconds, search)         // sliding TTL
+        cmd.setex(key(id), ttl.seconds, search)           // sliding TTL
     }
 
     fun clear(id: String) = redis.key().del(key(id))
@@ -121,7 +133,13 @@ compose (plan 07). This header is what plan 08 uses to prove round-robin.
 Two acceptable approaches — pick **A** for simplicity:
 
 - **A (explicit):** each `TrackingBean` action method ends with
-  `store.save(id, search)`. Clear, easy to reason about.
+  `store.save(id, search)`. Clear, easy to reason about. Every action method
+  (`addNumber`, `removeNumber`, `findShipments`, `validateEntry`, `lookupShipment`,
+  `toggleExpand`, `expandFirst`, `reset`) persists the working set back to
+  Redis. This includes `validateEntry()` called on input blur via AJAX — the
+  checkbox state is written to Redis so it survives any round-robin instance
+  switch. `TrackingBean.init()` reloads from Redis on each request, so the
+  working set is always current.
 - **B (phase listener):** a JSF `PhaseListener` on `RENDER_RESPONSE`/after
   invoke-application persists automatically. Less boilerplate, more magic.
 

@@ -11,23 +11,63 @@ theme for both mobile (design1/2) and desktop (design3/4).
 # Servlet context
 quarkus.http.port=8080
 quarkus.http.root-path=/
-
-# JSF state saving — CLIENT so postbacks can hit either instance (ADR-3)
-quarkus.myfaces.faces-config.state-saving-method=client
-# fallbacks / raw context params if extension does not surface the above:
-# jakarta.faces.STATE_SAVING_METHOD=client
-# jakarta.faces.PROJECT_STAGE=Production
-
-# Facelets
-jakarta.faces.FACELETS_REFRESH_PERIOD=-1
-jakarta.faces.FACELETS_SKIP_COMMENTS=true
+# Note: do NOT use quarkus.myfaces.faces-config.state-saving-method —
+# the extension does not recognize it. Client state is forced via
+# MyFacesConfigInitializer (ServletContextListener, see below).
 ```
 
-> The `quarkus-myfaces` extension exposes many params directly; where a typed
-> Quarkus config key is unavailable, set the raw JSF context-param in `web.xml`
-> (§3). **Client state saving is mandatory** for round-robin (plan 04).
+> **Client state saving is mandatory** for round-robin (plan 04). Set
+> `STATE_SAVING_METHOD` programmatically via a `@WebListener
+> ServletContextListener` — the `web.xml` `<context-param>` may be processed too
+> late for MyFaces's initialization sequence. The listener also injects SECRET
+> and MAC_SECRET from environment variables so both app instances share
+> identical cryptographic keys.
+
+### `MyFacesConfigInitializer` — programmatic config (required)
+
+In Quarkus with MyFaces, the `web.xml` context params may be read **after**
+MyFaces initialization completes, leaving them ineffective. A
+`@WebListener ServletContextListener` sets them early enough:
+
+```java
+@WebListener
+public class MyFacesConfigInitializer implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        ServletContext ctx = sce.getServletContext();
+        ctx.setInitParameter("jakarta.faces.STATE_SAVING_METHOD", "client");
+        ctx.setInitParameter("javax.faces.STATE_SAVING_METHOD", "client");
+        ctx.setInitParameter("org.apache.myfaces.SECRET",
+            System.getenv("FT_JSF_SECRET"));
+        ctx.setInitParameter("org.apache.myfaces.MAC_SECRET",
+            System.getenv("FT_JSF_MAC_SECRET"));
+    }
+}
+```
+
+### AES-128 key for MyFaces 4.x (NOT DES)
+
+MyFaces 4.x uses **AES** encryption for client-side state, not DES.
+The SECRET must be **16 bytes** (AES-128), not 8 bytes (DES).
+An 8-byte secret causes `Invalid key length (8)` at page render time.
+
+Generate keys:
+```python
+import base64, os
+secret = base64.b64encode(os.urandom(16)).decode()   # 24 chars with padding
+mac    = base64.b64encode(os.urandom(32)).decode()   # 44 chars with padding
+```
+
+> Both `SECRET` and `MAC_SECRET` must be **identical** on app1 and app2 so
+> encrypted + MAC-signed view state produced by one node validates on the
+> other. Supply via `FT_JSF_SECRET` / `FT_JSF_MAC_SECRET` env vars (plan 07).
 
 ### `web.xml` (`src/main/webapp/WEB-INF/web.xml`)
+
+Keep it minimal — client state and secrets are set programmatically by
+`MyFacesConfigInitializer`. The web.xml is a fallback for load-on-startup
+servlet mapping and welcome files:
+
 ```xml
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" version="6.0">
   <context-param>
@@ -37,15 +77,6 @@ jakarta.faces.FACELETS_SKIP_COMMENTS=true
   <context-param>
     <param-name>jakarta.faces.PROJECT_STAGE</param-name>
     <param-value>Production</param-value>
-  </context-param>
-  <!-- Shared secret keys so client state written by app1 is readable by app2 -->
-  <context-param>
-    <param-name>org.apache.myfaces.SECRET</param-name>
-    <param-value>${FT_JSF_SECRET}</param-value>
-  </context-param>
-  <context-param>
-    <param-name>org.apache.myfaces.MAC_SECRET</param-name>
-    <param-value>${FT_JSF_MAC_SECRET}</param-value>
   </context-param>
 
   <servlet>
@@ -64,9 +95,9 @@ jakarta.faces.FACELETS_SKIP_COMMENTS=true
 </web-app>
 ```
 
-> **Shared client-state secret** — both instances MUST use identical
-> `SECRET`/`MAC_SECRET` (injected via env in compose, plan 07) so encrypted +
-> MAC-signed view state produced by one node validates on the other.
+> SECRET and MAC_SECRET are **not** placed in web.xml — they come from
+> environment variables via `MyFacesConfigInitializer` so dev/test values
+> never leak into version control.
 
 ### `faces-config.xml` and `beans.xml`
 - `faces-config.xml` — mostly empty for POC (annotation-driven beans);

@@ -196,7 +196,9 @@ is the stable seam the web layer depends on.
 > no-arg constructor, which Quarkus Arc prefers over the primary constructor.
 > Parameters declared via `private val` in the primary constructor are left
 > **null**. Use **field injection** instead of constructor injection for
-> `@ApplicationScoped` Kotlin beans:
+> `@ApplicationScoped` Kotlin beans. This applies to `ShipmentService`,
+> `ShipmentRepository`, and also to `RedisSessionStore` (with `by lazy`
+> for deferred `ValueCommands` initialization — see plan 04 §2).
 
 ```kotlin
 @ApplicationScoped

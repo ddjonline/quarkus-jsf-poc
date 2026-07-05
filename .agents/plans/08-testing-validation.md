@@ -11,7 +11,7 @@ Playwright for browser-realistic UI and session-flow validation.
 |------|---------|
 | `ShipmentRepositoryTest` | Postgres-backed: `4821763` / `00004821763`=IN_TRANSIT with 3 ordered events (last=CURRENT), `3390045` / `00003390045`=DELIVERED; unknown→null; `normalizePro` strips `PRO-`, keeps digits only, trims, zero-pads |
 | `ShipmentServiceTest` | `find("4821763")` → canonical `00004821763` with 3 timeline events, last=CURRENT; `find("PRO-3390045")` resolves; `find("0000000")`=null; `lookup` dedupes + filters blanks + preserves order |
-| `RedisSessionStoreTest` | save→load round-trips `TrackingSearch` (JSON); TTL set; missing key → empty `TrackingSearch` |
+| `RedisSessionStoreTest` | save→load round-trips `TrackingSearch` (JSON) with multiple `ProNumberEntry` entries (values + checkboxes) and multiple `ShipmentLookupResult` results all preserved; TTL set; missing key → empty `TrackingSearch` via `fresh()` |
 
 `RedisSessionStoreTest` uses **Quarkus Dev Services for Redis**; the
 `ShipmentRepository`/`ShipmentService` tests use **Quarkus Dev Services for
@@ -39,7 +39,13 @@ Postgres** — both auto-start throwaway containers in tests, no manual setup.
 
 | Test | Asserts |
 |------|---------|
-| `TrackingBeanTest` | `addNumber` respects max=10; `removeNumber` respects min=1; `findButtonLabel` = "Find My Shipment" for ≤1, "Find My Shipments (n)" for >1; `searchActive` false when all blank |
+| `TrackingBeanTest` | `addNumber` respects max=10 and preserves existing entries; `removeNumber` respects min=1 AND removes the associated result from results list; `findButtonLabel` = "Find My Shipment" for ≤1 checked+non-blank, "Find My Shipments (n)" for >1; `searchActive` false when all blank or populated-but-unchecked; `validateEntry` auto-checks valid PRO / unchecks invalid; `findShipments` only processes checked + non-blank entries |
+
+> **Test isolation with `@BeforeEach`:** `TrackingBeanTest` needs `@BeforeEach`
+> calling `bean.reset()` because the Redis Dev Service container is shared across
+> test methods. Without reset, stale data from a previous test method persists to
+> the next via `store.load(session.getId())`, causing false failures or
+> misleadingly green tests. Each test method should begin with a clean working set.
 
 > **SessionContext dependency:** `TrackingBean.init()` calls `session.getId()`.
 > `SessionContext.id` must be `var id: String = ""` (with default), not
