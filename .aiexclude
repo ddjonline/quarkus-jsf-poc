@@ -1,0 +1,62 @@
+# Build outputs
+**/build/
+**/target/
+**/out/
+**/.kotlin/
+**/.konan/
+
+# Mobile and platform generated outputs
+**/captures/
+**/derivedData/
+**/DerivedData/
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+**/*.xcodeproj/project.xcworkspace/xcuserdata/
+**/Pods/
+
+# Dependency caches and packages
+**/node_modules/
+**/.mvn/wrapper/maven-wrapper.jar
+
+# IDE and editor state
+**/.idea/
+**/.vscode/
+**/*.iml
+**/.DS_Store
+
+# Logs and reports
+**/*.log
+**/hs_err_pid*
+**/replay_pid*
+**/test-results/
+**/reports/
+
+# Secrets and local-only configuration
+**/.env
+**/.env.*
+**/*secret*
+**/*secrets*
+**/*credential*
+**/*credentials*
+**/*token*
+**/local.properties
+**/keystore.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pem
+**/*.key
+**/*.crt
+
+# Archives and binaries
+**/*.jar
+**/*.war
+**/*.ear
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.tgz
+**/*.dmg
+**/*.apk
+**/*.aab
+**/*.ipa
