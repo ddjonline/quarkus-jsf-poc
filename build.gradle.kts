@@ -64,3 +64,9 @@ noArg {
 }
 
 tasks.test { useJUnitPlatform() }
+
+tasks.clean {
+    doLast {
+        delete("node_modules")
+    }
+}
