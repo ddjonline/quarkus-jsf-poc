@@ -1,0 +1,78 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:ui="jakarta.faces.facelets"
+      xmlns:pt="jakarta.faces.passthrough">
+<ui:composition>
+    <div class="results-toolbar">
+        <span class="results-toolbar-label">RESULTS <span class="results-count" data-testid="results-count">#{tracking.resultsCount}</span></span>
+        <h:commandLink styleClass="results-expand-link" action="#{tracking.expandFirst}">
+            Expand first
+            <f:ajax execute="@this" render="trackForm"/>
+        </h:commandLink>
+    </div>
+
+    <div class="results-cards">
+        <ui:repeat value="#{tracking.results}" var="r">
+            <div class="result-card" data-testid="result-card">
+                <h:panelGroup rendered="#{r.state eq 'PENDING' or r.state eq 'LOADING'}">
+                    <div class="result-card-header">
+                        <div class="result-card-thumb"/>
+                        <div class="result-card-info">
+                            <span class="result-pro">#{r.displayPro}</span>
+                            <span class="result-loading">
+                                <span class="spinner"/>
+                                #{r.state eq 'LOADING' ? 'Looking up...' : 'Queued'}
+                            </span>
+                        </div>
+                    </div>
+                </h:panelGroup>
+
+                <h:panelGroup rendered="#{r.state eq 'NOT_FOUND'}">
+                    <div class="result-card-header">
+                        <div class="result-card-thumb result-card-thumb--neutral"/>
+                        <div class="result-card-info">
+                            <span class="result-pro">#{r.displayPro}</span>
+                            <span class="result-notfound">No shipment found</span>
+                        </div>
+                    </div>
+                </h:panelGroup>
+
+                <h:panelGroup rendered="#{r.state eq 'ERROR'}">
+                    <div class="result-card-header">
+                        <div class="result-card-thumb result-card-thumb--neutral"/>
+                        <div class="result-card-info">
+                            <span class="result-pro">#{r.displayPro}</span>
+                            <span class="result-error">#{r.errorMessage != null ? r.errorMessage : 'Lookup error'}</span>
+                        </div>
+                    </div>
+                </h:panelGroup>
+
+                <h:panelGroup rendered="#{r.state eq 'LOADED'}">
+                    <div class="result-card-header">
+                        <div class="result-card-thumb #{r.shipment.status.cssClass eq 'badge-transit' ? 'result-card-thumb--transit' : 'result-card-thumb--delivered'}"/>
+                        <div class="result-card-info">
+                            <span class="result-pro">#{r.displayPro}</span>
+                            <span class="result-route">#{r.shipment.origin} → #{r.shipment.destination}</span>
+                        </div>
+                        <div class="result-card-right">
+                            <span class="badge #{r.shipment.status.cssClass}">#{r.shipment.status.label}</span>
+                            <h:commandLink styleClass="result-toggle" action="#{tracking.toggleExpand(r.queriedPro)}"
+                                           pt:data-testid="result-toggle">
+                                <span class="chevron #{r.expanded ? 'chevron--up' : 'chevron--down'}">&#x25BC;</span>
+                                <f:ajax execute="@this" render="trackForm"/>
+                            </h:commandLink>
+                        </div>
+                    </div>
+
+                    <h:panelGroup rendered="#{r.expanded}">
+                        <ui:include src="detail.xhtml">
+                            <ui:param name="result" value="#{r}"/>
+                        </ui:include>
+                    </h:panelGroup>
+                </h:panelGroup>
+            </div>
+        </ui:repeat>
+    </div>
+</ui:composition>
+</html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:ui="jakarta.faces.facelets"
+      xmlns:pt="jakarta.faces.passthrough">
+<ui:composition template="/WEB-INF/templates/layout.xhtml">
+    <ui:define name="content">
+        <h:form id="trackForm">
+            <ui:include src="/WEB-INF/fragments/pro-input.xhtml"/>
+            <h:panelGroup rendered="#{tracking.hasResults}">
+                <ui:include src="/WEB-INF/fragments/results.xhtml"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{not tracking.hasResults}">
+                <ui:include src="/WEB-INF/fragments/empty-state.xhtml"/>
+            </h:panelGroup>
+        </h:form>
+    </ui:define>
+</ui:composition>
+</html>

@@ -1,0 +1,58 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:ui="jakarta.faces.facelets">
+<ui:composition>
+    <div class="shipment-detail" data-testid="shipment-detail">
+        <div class="detail-summary">
+            <span class="detail-pro">#{result.shipment.displayPro}</span>
+            <span class="detail-route">#{result.shipment.origin} → #{result.shipment.destination}</span>
+            <span class="badge #{result.shipment.status.cssClass}">#{result.shipment.status.label}</span>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-col">
+                <div class="detail-section">
+                    <h3 class="section-label">SHIPMENT DETAILS</h3>
+                    <div class="detail-row"><span class="detail-label">Shipper</span><span class="detail-value">#{result.shipment.shipper}</span></div>
+                    <div class="detail-row"><span class="detail-label">Consignee</span><span class="detail-value">#{result.shipment.consignee}</span></div>
+                    <div class="detail-row"><span class="detail-label">Commodity</span><span class="detail-value">#{result.shipment.commodity}</span></div>
+                    <div class="detail-row"><span class="detail-label">Weight</span><span class="detail-value">#{result.shipment.weightLbs} lbs</span></div>
+                    <div class="detail-row"><span class="detail-label">Pieces</span><span class="detail-value">#{result.shipment.pieces} pcs</span></div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-label">PICKUP &#x26; DRIVER</h3>
+                    <div class="detail-row"><span class="detail-label">Pickup Time</span><span class="detail-value">#{result.shipment.pickupTime}</span></div>
+                    <div class="detail-row"><span class="detail-label">Driver</span><span class="detail-value">#{result.shipment.driverName}</span></div>
+                    <div class="detail-row"><span class="detail-label">Driver Phone</span><span class="detail-value">#{result.shipment.driverPhone}</span></div>
+                </div>
+            </div>
+
+            <div class="detail-col">
+                <div class="detail-section">
+                    <h3 class="section-label">LOCATION &#x26; DELIVERY</h3>
+                    <div class="detail-row"><span class="detail-label">Current Loc.</span><span class="detail-value">#{result.shipment.currentLocation}</span></div>
+                    <div class="detail-row"><span class="detail-label">Last Update</span><span class="detail-value">#{result.shipment.lastUpdate}</span></div>
+                    <div class="detail-row"><span class="detail-label">Est. Delivery</span><span class="detail-value">#{result.shipment.estimatedDelivery}</span></div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-label">SHIPMENT TIMELINE</h3>
+                    <div class="timeline">
+                        <ui:repeat value="#{result.shipment.timeline}" var="t">
+                            <div class="timeline-item">
+                                <div class="timeline-marker #{t.state eq 'CURRENT' ? 'timeline-marker--current' : 'timeline-marker--completed'}"/>
+                                <div class="timeline-content">
+                                    <span class="timeline-time">#{t.timeLabel}</span>
+                                    <span class="timeline-title">#{t.title}</span>
+                                    <span class="timeline-location">#{t.location}</span>
+                                </div>
+                            </div>
+                        </ui:repeat>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</ui:composition>
+</html>

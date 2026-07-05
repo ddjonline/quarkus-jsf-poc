@@ -1,0 +1,51 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:ui="jakarta.faces.facelets"
+      xmlns:pt="jakarta.faces.passthrough">
+<ui:composition>
+    <div class="pro-toolbar">
+        <span class="pro-toolbar-label">PRO NUMBERS <span class="pro-counter">#{tracking.counterText}</span></span>
+        <h:commandLink styleClass="pro-add-link #{tracking.addDisabled ? 'pro-add-link--disabled' : ''}"
+                       disabled="#{tracking.addDisabled}"
+                       action="#{tracking.addNumber}">
+            + Add Number
+            <f:ajax execute="@form" render="trackForm"/>
+        </h:commandLink>
+    </div>
+
+    <div class="pro-rows">
+        <ui:repeat value="#{tracking.entries}" var="e" varStatus="st">
+            <div class="pro-row">
+                <h:selectBooleanCheckbox value="#{e.checked}" styleClass="pro-row-check"
+                                         pt:data-testid="pro-row-check">
+                    <f:ajax event="change" execute="@form" render="trackForm"/>
+                </h:selectBooleanCheckbox>
+                <h:inputText value="#{e.value}" styleClass="pro-input"
+                             pt:placeholder="PRO-4821763 or 4821763"
+                             pt:inputmode="numeric"
+                             pt:data-testid="pro-input">
+                    <f:ajax event="blur" listener="#{tracking.validateEntry(e.id)}"
+                            execute="@form" render="trackForm"/>
+                </h:inputText>
+                <h:commandLink styleClass="pro-row-remove #{tracking.removeVisible ? '' : 'pro-row-remove--hidden'}"
+                               action="#{tracking.removeNumber(e.id)}"
+                               pt:data-testid="remove-pro"
+                               pt:title="Remove row">
+                    &#x2715;
+                    <f:ajax execute="@form" render="trackForm"/>
+                </h:commandLink>
+            </div>
+        </ui:repeat>
+    </div>
+
+    <div class="pro-actions">
+        <h:commandButton value="#{tracking.findButtonLabel}"
+                         action="#{tracking.findShipments}"
+                         styleClass="btn-find #{tracking.searchActive ? 'btn-find--active' : 'btn-find--muted'}"
+                         pt:data-testid="find-shipments">
+            <f:ajax execute="@form" render="trackForm"/>
+        </h:commandButton>
+    </div>
+</ui:composition>
+</html>

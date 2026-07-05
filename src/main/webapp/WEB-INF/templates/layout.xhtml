@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:ui="jakarta.faces.facelets">
+<h:head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>FreightTrack — Shipment Tracker</title>
+    <h:outputStylesheet library="css" name="app.css"/>
+</h:head>
+<h:body>
+    <header class="ft-header">
+        <div class="ft-header-inner">
+            <div class="ft-logo">
+                <span class="ft-logo-tile">FT</span>
+                <span class="ft-logo-text">FREIGHTTRACK</span>
+            </div>
+            <h1 class="ft-title">Shipment Tracker</h1>
+            <p class="ft-subtitle">Enter PRO numbers to locate your freight</p>
+        </div>
+        <div class="ft-accent-rule"></div>
+    </header>
+
+    <main class="ft-main">
+        <ui:insert name="content"/>
+    </main>
+
+    <footer class="ft-footer">
+        <span class="ft-footer-brand">FREIGHTTRACK</span>
+        <span class="ft-footer-sep">—</span>
+        <span>24/7 DISPATCH: (800) 555-0100</span>
+    </footer>
+</h:body>
+</html>
