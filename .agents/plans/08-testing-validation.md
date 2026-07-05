@@ -17,17 +17,36 @@ Playwright for browser-realistic UI and session-flow validation.
 `ShipmentRepository`/`ShipmentService` tests use **Quarkus Dev Services for
 Postgres** — both auto-start throwaway containers in tests, no manual setup.
 
-> **Test schema/seed:** for `@QuarkusTest`, apply the same `01-schema.sql` +
-> `02-seed.sql` via `quarkus.hibernate-orm.sql-load-script` (test profile) or
-> point Dev Services at the init scripts, so tests exercise the real schema.
-> Test profile may use `schema-management.strategy=drop-and-create` against the
-> ephemeral Dev Services DB.
+> **Test schema/seed:** for `@QuarkusTest`, apply the seed data via
+> `quarkus.hibernate-orm.sql-load-script` (test profile). The test profile uses
+> `schema-management.strategy=drop-and-create` against the ephemeral Dev Services
+> DB. The import SQL (`test-import.sql`) must use **explicit column names** in
+> `INSERT` statements — Hibernate's generated DDL column order varies and may not
+> match the Docker SQL schema order (see plan 06 §7 note).
+
+> **Application properties profile split:**
+> ```properties
+> %prod.quarkus.datasource.jdbc.url=${FT_DB_URL}             # env-only in prod
+> %test.quarkus.datasource.devservices.enabled=true           # auto-provision for tests
+> %test.quarkus.hibernate-orm.schema-management.strategy=drop-and-create
+> %test.quarkus.hibernate-orm.sql-load-script=test-import.sql
+> ```
+> Without the `%test` profile prefix, Quarkus will attempt to resolve
+> `${FT_DB_URL}` in tests, which fails when the env var is not set.
+> Dev Services auto-configures the datasource URL/user/password automatically.
 
 ## 2. Bean/logic tests
 
 | Test | Asserts |
 |------|---------|
 | `TrackingBeanTest` | `addNumber` respects max=10; `removeNumber` respects min=1; `findButtonLabel` = "Find My Shipment" for ≤1, "Find My Shipments (n)" for >1; `searchActive` false when all blank |
+
+> **SessionContext dependency:** `TrackingBean.init()` calls `session.getId()`.
+> `SessionContext.id` must be `var id: String = ""` (with default), not
+> `lateinit var`. In `@QuarkusTest`, the HTTP `SessionFilter` does not run, so
+> `id` is never set. A `lateinit` value throws
+> `UninitializedPropertyAccessException` in every test method that accesses the
+> bean.
 
 ## 3. Integration / UI smoke (RestAssured)
 

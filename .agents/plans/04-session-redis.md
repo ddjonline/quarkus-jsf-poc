@@ -88,10 +88,17 @@ next request can land on the other instance and see identical state.
 
 ### `SessionContext` helper (Kotlin, `@RequestScoped`)
 Wraps cookie extraction/creation so beans just call `sessionContext.id`.
+
+> **Default `id` value required:** Use `var id: String = ""` instead of
+> `lateinit var id`. The HTTP filter sets `id` before any request processing in
+> production, but in `@QuarkusTest` unit tests the filter does not run.
+> `lateinit` causes `UninitializedPropertyAccessException` when CDI-injected
+> beans access `id` in a test context.
+
 ```kotlin
 @RequestScoped
-class SessionContext {
-    lateinit var id: String   // set by the filter/phase-listener below
+open class SessionContext {
+    var id: String = ""
     var isNew: Boolean = false
 }
 ```

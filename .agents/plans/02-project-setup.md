@@ -117,13 +117,17 @@ dependencies {
     implementation("io.quarkus:quarkus-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("io.quarkus:quarkus-arc")            // CDI
+    implementation("io.quarkus:quarkus-jackson")        // JSON serialization (Redis session)
 
     // --- JSF (Jakarta Faces via Apache MyFaces) ---
-    implementation("io.quarkiverse.myfaces:quarkus-myfaces:<compatible-3.37.x>")
-    // (pulls in quarkus-undertow servlet support)
+    implementation("org.apache.myfaces.core.extensions.quarkus:myfaces-quarkus:4.1.3")
+    implementation("org.apache.myfaces.core.extensions.quarkus:myfaces-quarkus-deployment:4.1.3")
 
     // --- Redis (shared session store) ---
     implementation("io.quarkus:quarkus-redis-client")
+
+    // --- Jackson Kotlin module (required for @JsonProperty on data classes) ---
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     // --- PostgreSQL (shipment data source) ---
     implementation("io.quarkus:quarkus-hibernate-orm-panache-kotlin")
@@ -236,6 +240,17 @@ do not have Playwright silently start Docker.
 - Confirm the chosen Quarkus 3.37.1 line officially supports JDK 25 as a build
   and runtime target; if only "runs on" is supported, keep bytecode target at a
   supported LTS and run on 25.
+
+### Host JDK 26 caveat
+
+Kotlin 2.4.0's `org.jetbrains.kotlin.com.intellij.util.lang.JavaVersion.parse()`
+does **not** recognize version string `"26.0.1"`, causing an
+`IllegalArgumentException` when the build runs on JDK 26. The **toolchain**
+must be set to **25** even if the host JDK is 26 — Gradle auto-provisions JDK 25
+for compilation while the build scripts run on the host JDK 26.
+
+System Gradle 9.x handles this correctly; Gradle wrapper 8.10 does not build on
+JDK 26 at all. Upgrade wrapper to ≥9.x if the host JDK is ≥25.
 
 ## 10. Exit criteria
 

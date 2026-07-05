@@ -45,7 +45,7 @@ Key UI behaviors:
 | Runtime framework | **Quarkus 3.37.1** | Servlet stack required for JSF |
 | Web/UI framework | **JSF (Jakarta Faces 4.x)** via **Quarkiverse `quarkus-myfaces`** | Apache MyFaces on Quarkus |
 | Servlet container | **`quarkus-undertow`** | Pulled in by the JSF extension |
-| JDK | **Java 25** | Toolchain-pinned |
+| JDK | **Java 25** (toolchain; host JDK may be 26 — see plan 02 §9) | Toolchain-pinned |
 | Secondary language | **Kotlin 2.4.0** | Domain, services, config, Redis session layer |
 | JSF managed beans | **Java** | Cleanest CDI/JSF proxy interop (see §5) |
 | Build | **Gradle (Kotlin DSL)** | Mixed Java + Kotlin source sets |
